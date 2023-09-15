@@ -1,0 +1,22 @@
+#grep nfs /etc/fstab | awk '{print $2}' | while read mymnt; do echo; echo "Checking $mymnt"; my_result=`timeout 5 stat -t "$mymnt"`; if [ "$my_result" == "" ]; then echo "Mount is stale"; else echo "Mount is good"; fi; done
+
+#grep nfs /etc/fstab | awk '{print $2}' | while read mymnt; do echo; echo "Reading $mymnt"; sudo ls $mymnt; done
+
+#grep nfs /etc/fstab | awk '{print $2}' | while read mymnt; do echo; echo "Reading $mymnt"; my_result=`timeout 5 stat -t "$mymnt"`; if [ "$my_result" == "" ]; then sudo umount -l $mymnt; sudo mount $mymnt; fi; done
+
+#grep nfs /etc/fstab | awk '{print $2}' | while read mymnt; do echo; echo "Checking $mymnt"; my_result=`timeout 5 stat -t "$mymnt"`; if [ "$my_result" == "" ]; then echo "Mount is stale"; else echo "Mount is good"; fi; done
+
+#grep nfs /etc/fstab | awk '{print $2}' | while read mymnt; do echo; echo "Reading $mymnt"; sudo ls $mymnt; done
+
+#sudo umount -l <mount point>
+
+#sudo mount <mount point>
+
+#while true; do 
+  docker ps | grep k8s_nvidia-device-plugin | awk '{print $1}' | while read did; do docker kill $did; sleep 2; done
+  ps -ef | grep dcgm-exporter | grep -v grep | awk '{print $2}'  | while read dcgm; do kill -9 $dcgm; done
+  docker ps | grep k8s_dcgm-exporter_dcgm-exporter | awk '{print $1}' | while read k8did; do docker kill $k8did; done
+  docker ps | grep   k8s_gpu-feature-discovery-ctr | awk '{print $1}' | while read k8disc; do docker kill $k8disc; done
+done
+
+#
