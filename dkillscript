@@ -1,0 +1,46 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+  if ! [ -f .fwprocs ]; then
+    echo -n "" > .fwprocs
+    if systemctl -q is-active slurmd; then echo slurmd >> .fwprocs; fi
+    if systemctl -q is-active nvml_monitor; then echo nvml_monitor >> .fwprocs; fi
+    if systemctl -q is-active dcgm-exporter; then echo dcgm-exporter >> .fwprocs; fi
+    if systemctl -q is-active nvidia-dcgm; then echo nvidia-dcgm >> .fwprocs; fi
+    if systemctl -q is-active nvsm-core; then echo nvsm-core >> .fwprocs; fi
+  fi
+  cat .fwprocs | while read kproc
+  do
+    echo
+    echo "Disabling $kproc service..."
+    systemctl disable $kproc
+    echo "Stopping $kproc service..."
+    systemctl stop $kproc
+  done
+  echo "Stopping nvidia-fabricmanager nvidia-persistenced xorg-setup lightdm kubelet xserver fb-fair-monitoring..."
+  for oproc in nvidia-fabricmanager nvidia-persistenced xorg-setup lightdm kubelet xserver fb-fair-monitoring
+  do
+    if systemctl -q is-active $oproc; then echo "Stopping $oproc service..."; systemctl stop $oproc; fi
+  done
+  echo
+  echo "Starting process to kill spawning services..."
+  while true; do
+    ps -ef | grep dcgm-exporter | grep -v grep | awk '{print $2}' | while read dcgm; do kill -9 $dcgm; done
+    docker ps | grep k8s_nvidia-device-plugin | awk '{print $1}' | while read did; do docker kill $did; sleep 2; done
+    docker ps | grep gpu-feature-dis | awk '{print $1}' | while read gdid; do docker kill $gdid; done
+    docker ps | grep k8s_dcgm-exporter_dcgm-exporter | awk '{print $1}' | while read k8did; do docker kill $k8did; done
+    docker ps | grep   k8s_gpu-feature-discovery-ctr | awk '{print $1}' | while read k8disc; do docker kill $k8disc; done
+  done
+else
+  cat .fwprocs | while read kproc
+  do
+    echo
+    echo "Enabling $kproc service..."
+    systemctl enable $kproc
+    echo "Starting $kproc service..."
+    if [ "$kproc" = "nvsm-core" ]; then echo "Note: nvsm-core takes a while to start.."; fi
+    systemctl start $kproc
+    echo "$kproc service is $(systemctl is-active $kproc)"
+  done
+  echo "Done..."
+fi
