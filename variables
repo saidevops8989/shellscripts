@@ -19,3 +19,32 @@ function add {
 
 add
 echo "Global variable n: $n"
+
+#########################################################################
+
+PASSING VARIABLES IN THE FUNCTIONS
+
+#########################################################################
+
+#!/bin/bash
+#demonstrating variables in bash
+
+STR="Welome to the world of shell"
+echo $STR
+echo 
+echo "Env variable: $PATH"
+echo 
+echo "Env variable: $SHELL"
+echo
+
+n=10
+add() 
+{
+          n=`expr $1 + $2`
+          echo "local variable fun n: $n"
+}
+
+
+echo "Global variable n: $n"
+add 3 6
+#############################################################################
