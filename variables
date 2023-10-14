@@ -1,0 +1,21 @@
+#!/bin/bash
+#demonstrating variables in bash
+
+STR="Welome to the world of shell"
+echo $STR
+echo 
+echo "Env variable: $PATH"
+echo 
+echo "Env variable: $SHELL"
+echo
+
+n=10
+function add {
+          local n=20
+          local m=30
+          n=`expr $n + $m`
+          echo "local variable fun n: $n"
+}
+
+add
+echo "Global variable n: $n"
