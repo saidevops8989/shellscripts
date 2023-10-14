@@ -48,3 +48,26 @@ add()
 echo "Global variable n: $n"
 add 3 6
 #############################################################################
+export1.sh
+
+#!/bin/bash
+#Demonstrating export built-in function
+var1=Hello
+var2=Welcome
+echo "your name please"
+read name
+echo "$var1 $name,$var2!"
+export name
+bash export2.sh
+echo "value of name after exporting: $name"
+
+________________________________________________
+export2.sh
+
+#!/bin/bash
+echo "value of exported variable: $name"
+name="saipavan"
+
+wen we pass this export2.sh in the above export1.sh the variable is overwritten with the value in the export1.sh
+######################################################
+
