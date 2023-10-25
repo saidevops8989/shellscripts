@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+  echo
+  echo "Usage: `basename $0` [ sh | den | phenx | sea ]" 1>&2
+  echo
+
+  echo "Choices are:"
+  echo "ftw (Fort Worth, TX)"
+  echo "den (denver, va)"
+  echo "den2 (denver, va)"
+  echo "den3 (denver, va)"
+  echo "den4 (denver, va)"
+  echo "snc "
+  echo "snc2 "
+  echo "snc3 "
+fi
+
+case $1 in
+  ftw) ssh -A ${USER}admin@jumpserver001 ;;
+  den) ssh -A  ${USER}admin@den-jump102  ;;
+  den2) ssh -A  ${USER}admin@den-jump101  ;;
+  den3) ssh -A  ${USER}admin@den-jump201  ;;
+  den4) ssh -A  ${USER}admin@den-jump202  ;;
+  snc) ssh -A  ${USER}admin@snc-jump101  ;;
+  snc2) ssh -A  ${USER}admin@snc-jump201  ;;
+  snc3) ssh -A  ${USER}admin@snc-jump202  ;;
+  *)
+     echo
+     echo "Usage: `basename $0` [ den | phenx | sea ]" 1>&2
+     echo
+     exit
+     ;;
+esac
