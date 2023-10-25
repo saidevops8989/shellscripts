@@ -1,0 +1,15 @@
+###if stmt on command line ####  $? takes the exit status of the last executed command####
+if [ $? -eq 0 ] ; then echo "ok"; fi
+
+#####if else on command line#####
+if [ $? -eq 0 ] ; then echo "ok" ; else echo "not sucess" ;fi
+
+#### if with not equal to some condition and a file name passing on if stmt and echo $USER give the current logged in name
+ if ! grep $USER /etc/passwd ; then echo "your account is not managed locally"; fi
+##adding else to it
+if ! grep $USER /etc/passwd ; then echo "your account is not managed locally"; else echo "ldap"; fi
+
+
+
+
+
