@@ -9,6 +9,14 @@ if [ $? -eq 0 ] ; then echo "ok" ; else echo "not sucess" ;fi
 ##adding else to it
 if ! grep $USER /etc/passwd ; then echo "your account is not managed locally"; else echo "ldap"; fi
 
+###using test instead of if###
+test "$(whoami)" != 'root' && (echo you are using a non-privileged account; exit 1)
+___
+if [ "$(whoami)" != 'root' ]; then
+        echo "You have no permission to run $0 as non-root user."
+        exit 1;
+fi
+
 
 
 
