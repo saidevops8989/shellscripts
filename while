@@ -4,4 +4,23 @@ while true ; do echo sai;  done
 ##while to kill
 ps -ef  | grep   saipavan | awk '{print $2}' | while read a; do kill -9 $a;done
 
+##### if previos cmd is sucess and its value is 0 it will start hi loop#####
+ while [ $echo$? == 0 ]; do echo hi; done
 
+######while and case both combined#########
+#!/bin/bash
+echo -n "print message"
+valid=0
+while
+[ $valid == 0 ]
+do read ans
+   case $ans in
+   yes|YES|y|Y) echo will print the message
+                echo The message
+                valid=1
+                ;;
+    [nN][oO] ) echo will not print thee message
+               valid=1;;
+      *)       echo yes or no of some form please;;
+     esac
+done
