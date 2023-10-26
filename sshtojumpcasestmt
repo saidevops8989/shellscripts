@@ -1,3 +1,12 @@
+echo "enter answer"
+read ans
+case $ans in
+ yes|YES|y|Y|y.x) echo "will do";;
+ n*|N*) echo "will no do";;
+  *)echo "oops";;
+esac
+
+#################################################################
 #!/bin/bash
 
 if [ $# -eq 0 ]; then
