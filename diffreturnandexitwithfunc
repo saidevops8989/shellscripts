@@ -1,0 +1,37 @@
+#### we can see the difference in return and exit function
+
+#!/bin/bash
+function myfun {
+echo startingfun
+return
+echo this is not executed
+}
+myfun
+echo "called fun"
+###output##
+___________
+startingfun
+called fun
+_________
+#### so after it executes the function its returing back to the main script and executing the echo cmd####
+
+####EXIT######
+#!/bin/bash
+function f2 {
+echo "in f2"
+exit 5
+echo "more in f2"
+}
+echo starting
+f2
+echo after f2
+
+#########outout###
+___________
+starting
+in f2
+_______
+### in the above fi we see after the exit stmt its not executing the last echo cmd after the function because its exited and if we see echo $?### the value is set to 5 deault for sucessfullis 0##
+echo $?
+5
+
