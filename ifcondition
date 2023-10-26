@@ -17,6 +17,20 @@ if [ "$(whoami)" != 'root' ]; then
         exit 1;
 fi
 
+################ifelse########
+echo enter file name
+read file
+echo word to search
+read word
+
+if
+grep -q $word  $file
+then
+echo found the word in file
+else
+echo notfound inthe file
+fi
+####################
 
 
 
