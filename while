@@ -1,2 +1,7 @@
 #just loooping#####
 while true ; do echo sai;  done
+
+##while to kill
+ps -ef  | grep   saipavan | awk '{print $2}' | while read a; do kill -9 $a;done
+
+
