@@ -1,0 +1,6 @@
+sed -i "s/ONBOOT=.*/ONBOOT=yes/g" ifcfg-enp0s3
+
+sed -i "s/ONBOOT=.*/ONBOOT=yes/g"  /etc/sysconfig/network-scripts/ifcfg-enp0s3
+
+sed -i "s/ONBOOT=.*/ONBOOT=yes/g"  /etc/sysconfig/network-scripts/ifcfg-enp0s8
+
