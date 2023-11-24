@@ -2,5 +2,49 @@ sed -i "s/ONBOOT=.*/ONBOOT=yes/g" ifcfg-enp0s3
 
 sed -i "s/ONBOOT=.*/ONBOOT=yes/g"  /etc/sysconfig/network-scripts/ifcfg-enp0s3
 
-sed -i "s/ONBOOT=.*/ONBOOT=yes/g"  /etc/sysconfig/network-scripts/ifcfg-enp0s8
+sed -i "s/ONBOOT=.*/ONBOOT=yes/g"  /etc/sysconfig/network-scripts/ifcfg-enp0s8 
+
+install jenkins 
+dnf install java-11-openjdk-devel -y
+
+
+
+
+https://www.jenkins.io/blog/2023/03/27/repository-signing-keys-changing/
+
+sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+
+cd /etc/yum/repos.d/
+
+curl -O httpssystemctl start jenkins://pkg.jenkins.io/redhat-stable/jenkins.repo
+
+dnf install jenkins -y
+systemctl start jenkins
+
+systemctl status jenkis
+
+systemctl enable jenkinsns
+
+firewall-cmd --add-port=8080/tcp --permanent
+
+firewall-cmd --reload
+
+cat /var/lib/jenkins/secrets/initialAdminPassword
+
+now acess server ip http://serverip:8080
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
