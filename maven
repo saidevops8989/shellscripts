@@ -1,0 +1,38 @@
+mkdir classcode
+
+cd classcode
+
+git clone edurekaclasscode
+
+maven also run on java
+
+
+maven goals
+
+calulator example
+
+
+man mvn
+
+
+yum install maven or apt-get install maven
+
+cd devopsclasscode --   check do you have a pox.xml file
+
+mvn compile
+
+///after build is sucessfull show the classfiles generated
+
+cd /classcode/devopsclasscode/target
+
+cd com/edurekademo/utilites
+
+show class files go back to pox.xml location
+
+mvn package
+//we can see on path of build where we have war file
+
+cd classcode/devopsclasscode/target/addressbook.war
+
+
+
