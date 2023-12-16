@@ -1,0 +1,102 @@
+84  wget https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.33/bin/apache-tomcat-9.0.33.tar.gz
+   85  ls
+   86  tar -zxvf apache-tomcat-9.0.33.tar.gz 
+   87  ls
+   88  #mv apache-tomcat-*/* /opt/tomcat/
+   89  mv apache-tomcat-9.0.33 /opt/tomcat/
+   90  chown -R tomcat:tomcat /opt/tomcat/
+   91  alternatives --list  | grep ^java
+   92  vi /etc/systemd/system/tomcat.service
+   93  sestatus 
+   94  sed -i 's/ELINUX=enforcing/ELINUX=disabled/g' /etc/selinux/config
+   95  sestatus 
+   96  setenforce 0
+   97  sestatus 
+   98  systemctl daemon-reload
+   99  systemctl start tomcat
+  100  systemctl status -l  tomcat
+  101  tail /var/log/messages 
+  102  cd /opt/tomcat/
+  103  ls
+  104  cd apache-tomcat-9.0.33/
+  105  ls
+  106  mv * ../
+  107  cd ..
+  108  ls
+  109  pwd
+  110  systemctl restart tomcat
+  111  systemctl status tomcat
+  112  tail /var/log/messages 
+  113  systemctl status tomcat
+  114  systemctl restart tomcat
+  115  systemctl status tomcat
+  116  tail /var/log/messages 
+  117  cat /etc/sysconfig/selinux 
+  118  reboot
+  119  ip a
+  120  sed -i "s/ONBOOT=.*/ONBOOT=yes/g" /etc/sysconfig/network-scripts/ifcfg-enp0s9
+  121  ifconfig up enp0s9
+  122  systemctl status tomcat
+  123  systemctl starttomcat
+  124  systemctl start tomcat
+  125  systemctl status tomcat
+  126  tail /var/log/messages 
+  127  systemctl status tomcat
+  128  systemctl status firewalld
+  129  ip a
+  130  w
+  131  systemctl status tomcat
+  132  tail /var/log/messages 
+  133  free -h
+  134  sestatus 
+  135  ps -ef | grep 2440
+  136  cd /usr/share/tomcat/
+  137  ls
+  138  cd bin/
+  139  ls
+  140  cd /opt/tomcat/
+  141  ls
+  142  cd logs/
+  143  ls
+  144  tail catalina.out 
+  145  alternatives --list  | grep ^javaCOPY
+  146  alternatives --list  | grep ^java
+  147  which java
+  148  ls
+  149  cd
+  150  vi /etc/systemd/system/tomcat.service
+  151  systemctl daemon-reload
+  152  systemctl restart tomcat
+  153  systemctl status tomcat
+  154  ip a
+  155  cd /opt/tomcat/
+  156  ls
+  157  cd conf/
+  158  ls
+  159  cat tomcat-users.xml 
+  160  vi tomcat-users.xml 
+  161  systemctl status tomcat
+  162  systemctl restart tomcat
+  163  systemctl status tomcat
+  164  ls
+  165  cat /opt/tomcat/conf/tomcat-users.xml
+  166  vi /opt/tomcat/webapps/manager/META-INF/context.xml
+  167  systemctl restart tomcat
+  168  systemctl status tomcat
+  169  cd /opt/tomcat/
+  170  ls
+  171  cd ..
+  172  export CATALINA_HOME=/opt/tomcat/
+  173  systemctl restart tomcat
+  174  echo $CATALINA_HOME
+  175  tail /var/log/messages 
+  176  tail /var/log/secure 
+  177  which java
+  178  export CATALINA_BASE=/opt/tomcat
+  179  systemctl restart tomcat
+  180  systemctl status tomcat
+  181  systemctl status -l tomcat
+  182  pwd
+  183  cd tomcat/conf/
+  184  cat tomcat-users.xml 
+  185  history 
