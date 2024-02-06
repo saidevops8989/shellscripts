@@ -1,0 +1,4 @@
+for ((i=2201; i<=2224; i++)); do
+    server=server${I}.example.com
+    ssh ${server} echo ${server} says hello
+done
