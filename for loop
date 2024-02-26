@@ -1,0 +1,1 @@
+for ((i=2201; i <= 2224; i++)); do ssh server${I}.example.com timeout 5s df -h /storaget; done
