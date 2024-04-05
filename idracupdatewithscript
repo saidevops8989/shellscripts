@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# set -x
+if [[ $# -lt 2 ]]; then
+  echo "usage: $0 [target idrac] [firmware package]"
+  exit 1;
+fi;
+CREDENTIALS="user:pass";
+TARGET_IDRAC="${1}";
+if [[ -e ${2} ]]; then
+  FW_PACKAGE="${2}";
+else
+  echo "error: firmware ${2} does not exist";
+  exit 1;
+fi;
+# get the etag
+ETAG="$(curl --no-styled-output -s -u "${CREDENTIALS}" -ki "https://${TARGET_IDRAC}/redfish/v1/UpdateService/FirmwareInventory" | awk 'BEGIN{RS="\r\n";} /^ETag/{print $2}')";
+# curl -i --no-styled-output -s -u "${CREDENTIALS}" -ki "https://${TARGET_IDRAC}/redfish/v1/UpdateService/FirmwareInventory"
+if [[ "${ETAG}" == "" ]]; then
+  echo "couldn't get etag, bad creds ?"
+  exit 1;
+fi;
+# push the firmware
+FW_RES="$(curl -s -u "${CREDENTIALS}" -k -H "If-Match: ${ETAG}" -F "file=@${FW_PACKAGE}" "https://${TARGET_IDRAC}/redfish/v1/UpdateService/FirmwareInventory")"
+FW_RES_PATH="$(echo "${FW_RES}" | jq -r '.["@odata.id"]')" # | tail -1 | jq -r '.["@odata.id"]')"
+if [[ "${FW_RES_PATH}" == "" ]]; then
+  echo "firmware wasn't successfully uploaded - info for debugging:"
+  echo "${FW_RES_PATH}"
+  echo "${FW_RES}"
+  exit 1
+fi;
+# schedule the job
+curl -u user:pass -ki -d '{"ImageURI":"'"${FW_RES_PATH}"'"}' -H "content-type: application/json"  "https://${TARGET_IDRAC}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
