@@ -1,0 +1,1505 @@
+Task 1: Installing and configuring the Amazon CloudWatch Logs agent
+
+In this task, you install the Amazon CloudWatch agent on the Database Server instance, which uses Amazon Linux 2023. You first connect to the Jump Host instance in the public subnet, and then use SSH to connect to the Database Server in the private subnet. The Database Server instance hosts a database that contains sensitive customer information, so you would like to be notified of any failed attempts to sign in.
+
+At the end of this task, you should be able to validate that the security logs from the Database Server instance are in CloudWatch Logs.
+
+ Note: This lab uses Session Manager, a capability of AWS Systems Manager, as the method of connecting to the Jump Host EC2 instance
+
+Task 1 hints
+Use the following high-level process steps to get you started:
+
+Use Session Manager to connect to the Jump Host instance.
+SSH from the Jump Host instance to the Database Server instance.
+Install, configure, and start the Amazon CloudWatch agent on the Database Server instance to send the local- y logs to CloudWatch.
+Validate that the security logs were sent to CloudWatch.
+Reference material:
+
+Connect to your Linux instance with AWS Systems Manager Session Manager
+Why is the /var/log directory missing logs in my EC2 Amazon Linux 2023 instance?
+Download and configure the CloudWatch agent using the command line
+Run the CloudWatch agent configuration wizard
+Task 1 full walkthrough
+TASK 1.1: INSTALLING THE CLOUDWATCH AGENT
+
+At the top of the AWS Management Console, in the search bar, search for and choose EC2.
+
+In the navigation pane at the left of the page, under Instances, choose Instances.
+
+Select Jump Host and then, at the upper-right of the page, choose Connect.
+
+On the Connect to instance page, choose the Session Manager tab, and then choose Connect.
+
+ Expected result: A new web browser tab opens with a console connection to the instance. A set of commands are run automatically when you connect to the instance that change to the user’s home directory and display the path of the working directory, similar to this:
+
+
+cd $HOME; pwd
+sh-4.2$ cd $HOME; pwd
+/home/ec2-user
+sh-4.2$
+First, use SSH to connect to the Database Server instance.
+
+ To establish an SSH connection to the Database Server instance as the student user, run the following command:
+Replace the DB_SERVER_IP placeholder value with the DbServerIp value listed to the left of these instructions.
+
+ssh student@DB_SERVER_IP
+ Note: On a Windows-based computer, you might need to use Ctrl + Shift + V or open the context (right-click) menu to paste text into a Session Manager console window.
+
+ Note: The first time you connect to the Database Server instance, you might receive the following prompt about the authenticity of the host:
+
+
+************************
+**** EXAMPLE OUTPUT ****
+************************
+
+The authenticity of host '10.10.10.77 (10.10.10.77)' can't be established.
+ECDSA key fingerprint is SHA256:*******************************************.
+ECDSA key fingerprint is MD5:**:**:**:**:**:**:**:**:**:**:**:**:**:**:**:**.
+Are you sure you want to continue connecting (yes/no)?
+Enter yes, and then press Enter to add the instance to the list of known hosts.
+
+When prompted for a password, copy and paste the LabPassword value listed to the left of these instructions, and then press Enter.
+
+ Expected output: If your connection is successful, you should receive the following output and the command prompt changes to indicate that you are logged in as student at the IP address you specified, similar to this:
+
+
+************************
+**** EXAMPLE OUTPUT ****
+************************
+
+[student@ip-10-10-10-31 ~]$
+You are now connected to the Database Server instance.
+
+ Note: The EC2 instances in this lab use Amazon Linux 2023, which does not utilize the rsyslog package. You must install rsyslog before you can configure the Amazon CloudWatch agent to access operating system’s security logs.
+
+ To install the rsyslog package, run the following command:
+
+sudo yum install -y rsyslog
+When prompted for a password, copy and paste the LabPassword value listed to the left of these instructions, and then press Enter.
+
+ To activate rsyslog, run the following command:
+
+
+sudo systemctl enable rsyslog --now
+Next, install the Amazon CloudWatch agent package on the Database Server instance.
+
+ To install the CloudWatch agent package, run the following command:
+
+sudo yum install -y amazon-cloudwatch-agent
+ Security: By default, the CloudWatch agent runs as the root user. As a best practice, you should always use a dedicated user for applications and system services. The CloudWatch agent installer creates a new user named cwagent that you can choose to use, or you can create another user. In either case, the user that you configure the CloudWatch agent to run as must have read and run access to the log files you wish to send to CloudWatch. For more information, refer to Running the CloudWatch agent as a different user in the Additional resources section at the end of this lab.
+
+ To grant read and run access to the /var/log/secure file for the cwagent user, run the following command:
+
+sudo setfacl -m u:cwagent:rx /var/log/secure
+ Note: In this lab, you only configure the CloudWatch agent to send security logs to CloudWatch, so you grant access for the cwagent user to only those logs.
+
+ To start the CloudWatch agent configuration wizard, run the following command:
+
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-config-wizard
+ Expected output: The wizards opens to the following menu:
+
+
+************************
+**** EXAMPLE OUTPUT ****
+************************
+
+=============================================================
+= Welcome to the AWS CloudWatch Agent Configuration Manager =
+=============================================================
+On which OS are you planning to use the agent?
+1. linux
+2. windows
+3. darwin
+default choice: [1]:
+
+Learn more
+In this lab, you perform a basic configuration of the CloudWatch agent to illustrate the general concept of sending logs from an instance to CloudWatch.
+
+For more information about configuring the CloudWatch agent, refer to Create the CloudWatch agent configuration file in the Additional resources section at the end of this lab.
+Enter 1 for linux.
+
+For Are you using EC2 or On-Premises hosts, enter 1 for EC2.
+
+For Which user are you planning to run the agent, enter 1 for cwagent.
+
+For Do you want to turn on StatsD daemon, enter 2 for no.
+
+For Do you want to monitor metrics from CollectD, enter 2 for no.
+
+For Do you want to monitor any host metrics, enter 2 for no.
+
+For Do you have any existing CloudWatch Log Agent configuration file to import for migration, enter 2 for no.
+
+For Do you want to monitor any log files, enter 1 for yes.
+
+For Log file path, enter /var/log/secure.
+
+For Log group name, enter database_server_security_logs.
+
+For Log group class, enter 1 for STANDARD.
+
+For Log stream name, press Enter to keep the default value of {instance_id}.
+
+For Log Group Retention in days, enter 9 for 90.
+
+For Do you want to specify any additional log files to monitor, enter 2 for no.
+
+For Do you want the CloudWatch agent to also retrieve X-ray traces, enter 2 for no
+
+For Do you want to store the config in the SSM parameter store, enter 2 for no.
+
+ Expected output: You should receive a Program exits now message and return to the shell prompt.
+
+ Note: If you need to modify the CloudWatch agent configuration in the future, you can find it at /opt/aws/amazon-cloudwatch-agent/bin/config.json.
+
+ To start the CloudWatch agent service, run the following command:
+
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json
+ Note: Notice the file path to the config.json file at the end of the command, which is the CloudWatch agent configuration file that you created with the CloudWatch agent wizard.
+
+ Expected output: The output should display information about the configuration file that is loaded by the agent, similar to this:
+
+
+************************
+**** EXAMPLE OUTPUT ****
+************************
+
+****** processing amazon-cloudwatch-agent ******
+/opt/aws/amazon-cloudwatch-agent/bin/config-downloader --output-dir /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d --download-source file:/opt/aws/amazon-cloudwatch-agent/bin/config.json --mode ec2 --config /opt/aws/amazon-cloudwatch-agent/etc/common-config.toml --multi-config default
+Successfully fetched the config and saved in /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/file_config.json.tmp
+Start configuration validation...
+/opt/aws/amazon-cloudwatch-agent/bin/config-translator --input /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json --input-dir /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d --output /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml --mode ec2 --config /opt/aws/amazon-cloudwatch-agent/etc/common-config.toml --multi-config default
+2022/02/14 16:48:34 Reading json config file path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/file_config.json.tmp ...
+Valid Json input schema.
+I! Detecting run_as_user...
+No csm configuration found.
+No metric configuration found.
+Configuration validation first phase succeeded
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent -schematest -config /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml
+Configuration validation second phase succeeded
+Configuration validation succeeded
+amazon-cloudwatch-agent has already been stopped
+Created symlink from /etc/systemd/system/multi-user.target.wants/amazon-cloudwatch-agent.service to /etc/systemd/system/amazon-cloudwatch-agent.service.
+Redirecting to /bin/systemctl restart amazon-cloudwatch-agent.service
+ To verify the status of the CloudWatch agent service, run the following command:
+
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
+ Expected output: The output should show that the CloudWatch agent is running, similar to this:
+
+
+************************
+**** EXAMPLE OUTPUT ****
+************************
+
+{
+  "status": "running",
+  "starttime": "2022-02-13T04:10:07+0000",
+  "configstatus": "configured",
+  "cwoc_status": "stopped",
+  "cwoc_starttime": "",
+  "cwoc_configstatus": "not configured",
+  "version": "1.247347.4"
+}
+ To sign out of the SSH session, run the following command:
+
+exit
+ Expected output: The output should confirm that you signed out and the SSH connection was closed, similar to this:
+
+
+************************
+**** EXAMPLE OUTPUT ****
+************************
+
+logout
+Connection to 10.10.10.77 closed.
+TASK 1.2: GENERATING AUTHENTICATION FAILURES IN THE SECURITY LOGS
+
+ To establish an SSH connection to the Database Server instance as the student user, run the following command:
+Replace the DB_SERVER_IP placeholder value with the DbServerIp value listed to the left of these instructions.
+
+ssh student@DB_SERVER_IP
+When prompted for a password, purposefully enter an incorrect password three times to generate one failed login attempt. Remember, you are trying to generate authentication failures, so failed logins are what you want.
+
+Repeat the previous two steps two more times to generate a total of three failed login attempts.
+
+TASK 1.3: VERIFYING THE LOG FILES ARE SENT TO CLOUDWATCH
+
+Return to your web browser tab with the EC2 management console.
+
+At the top of the AWS Management Console, in the search bar, search for and choose CloudWatch.
+
+In the navigation pane at the left of the page, under Logs, choose Log groups.
+
+On the Log groups page, choose the link for the database_server_security_logs log group.
+
+ Refresh: If database_server_security_logs is not listed, wait 1 minute, and then choose the  refresh button on the page.
+
+On the database_server_security_logs page, choose the Log streams tab.
+In the Log streams section, notice there is one log stream that is named with the EC2 instance ID of the database server instance.
+
+Choose the link for the log stream name to view the security logs from the database server instance.
+ Task complete: You have successfully installed the CloudWatch agent on an EC2 instance and configured it to send security logs to CloudWatch.
+Task 2: Creating an Amazon CloudWatch alarm to monitor for failed login attempts
+
+Now that you are sending the security logs from the database server to CloudWatch, you can create CloudWatch metrics and alarms to monitor the logs for any abnormal behavior.
+
+In this task, you create a CloudWatch metric filter to locate authentication failure event messages in the logs from the database server. You then create a CloudWatch alarm and notification to email you any time there are more than two login failures within a 5 minute window.
+
+At the end of this task, you should have a CloudWatch alarm that activates with the given parameters, and send an Amazon Simple Notification Service (Amazon SNS) notification to your email address.
+
+Task 2 hints
+Use the following high-level process steps to get you started:
+
+Create a metric filter in the CloudWatch Logs log group.
+Use the metric filter to create a CloudWatch alarm.
+While configuring the CloudWatch alarm, create the SNS notification.
+Reference material:
+
+Create a CloudWatch alarm based on a log group-metric filter
+Task 2 full walkthrough
+TASK 2.1: CREATING A METRIC FILTER
+
+In the navigation breadcrumbs at the top of the page, select the database_server_security_logs link.
+
+On the database_server_security_logs page, choose the Metric filters tab.
+
+At the upper-right of the Metric filters section, choose Create metric filter.
+
+On the Define pattern page:
+
+In the Create filter pattern section, for Filter pattern, enter "authentication failure" (including the quotes).
+In the Test pattern section, for Select log data to test, choose the EC2 instance ID for the database server.
+ Note: The EC2 instance ID should match the value of DbServerId listed to the left of these instructions.
+Choose Test pattern.
+ Expected output: Under Results, you should find a number of authentication failure log messages that match the number of times you failed to SSH to the Database Server instance. Only the last 50 log messages are used as a sample to test your filter pattern with. If you don’t see any results during your pattern test, you can try generating authentication failures again.
+
+At the bottom of the page, choose Next.
+
+On the Assign metric page, in the Create filter name section:
+
+For Filter name, enter database server authentication failures.
+In the Metric details section:
+For Metric namespace, enter authentication failures and verify that the Create new option is toggled on.
+For Metric name, enter database server authentication failures.
+For Metric value, enter 1.
+For Default value, enter 0.
+At the bottom of the page, choose Next.
+
+On the Review and create page, choose Create metric filter.
+
+ Expected result: You should notice a green banner at the top of the page with a Metric filter “database server authentication failures” has been created message.
+
+TASK 2.2: CREATING A CLOUDWATCH ALARM FROM A METRIC FILTER
+
+Next, create a CloudWatch alarm from the metric filter to alert you when the number of authentication failures detected in the log files crosses a specified threshold.
+
+On the database_server_security_logs page, on the Metric filters tab, you should see a card for database server authentication failures filter.
+
+Select the checkbox at the upper-right corner of the database server authentication failures card.
+
+Choose Create alarm .
+
+A new web browser tab opens to the Specify metrics and conditions page.
+
+On the Specify metrics and conditions page, in the Metric section:
+ Note: Many of the following values specified are the same as the default values, but are included in the event the defaults change in the future.
+
+For Metric name, enter database server authentication failures.
+For Statistic, choose Sum.
+For Period, choose 5 minutes.
+In the Conditions section:
+For Threshold type, select Static.
+For Whenever database server authentication failures is…, select Greater.
+For than…, enter 2.
+Expand the Additional configuration section, and then:
+For Missing data treatment, choose Treat missing data as ignore (maintain the alarm state).
+ Note: In this lab, you configure the CloudWatch alarm to maintain the In alarm state after it is activated as a consistent reminder that it needs to be addressed. If you decide to implement a similar approach, you can use the CloudWatch set-alarm-state AWS CLI command to change the alarm state back to OK after you have addressed it.
+
+At the bottom of the page, choose Next.
+
+On the Configure actions page, in the Notification section:
+
+For Alarm state trigger, select In alarm.
+For Select an SNS topic, select Create new topic.
+For Create a new topic…, enter CloudWatch_alarm_notifications.
+For Email endpoints that will receive the notification…, enter your email address.
+ Caution: Enter an email address that you currently have access to. You must verify the subscription to the SNS topic before the alert emails can be sent to you. When you are finished with the lab, all of the resources—including the SNS topic—are deleted from the lab environment. You will not receive further emails after the lab ends, but you can also follow the steps in the email you receive to unsubscribe from future messages.
+
+Choose Create topic.
+
+At the bottom of the page, choose Next.
+
+On the Add name and description page:
+
+For Alarm name, enter database server authentication failures alarm.
+For Alarm description, enter Alarms and notifies for more than 2 authentication failures over a span of 5 minutes.
+Choose Next.
+
+At the bottom of the Preview and create page, choose Create alarm.
+
+ Expected result: You should notice two banners at the top of the page—a green banner Successfully created alarm message, and a blue banner with a Some subscriptions are pending confirmation message.
+
+You must confirm your email address before Amazon SNS can send notification messages to you.
+
+Check your email for a message from AWS Notifications with a subject line of AWS Notification - Subscription Confirmation.
+The message should look similar to this:
+
+You have chosen to subscribe to the topic: arn:aws:sns:us-west-2:111122223333:CloudWatch_alarm_notifications
+
+To confirm this subscription, click or visit the link below (If this was in error no action is necessary): Confirm subscription
+
+Please do not reply directly to this email. If you wish to remove yourself from receiving all future SNS subscription confirmation requests please send an email to sns-opt-out
+
+Select the Confirm subscription link.
+ Expected result: A new web browser tab should open to a Subscription confirmed page.
+
+Close your web browser tab with the Subscription confirmed page.
+
+In the Some subscriptions are pending confirmation banner at top of the page, choose View SNS Subscriptions.
+
+On the Subscriptions page, verify that the status for the CloudWatch_alarm_notifications topic is Confirmed.
+
+Close your web browser tab with the Subscriptions page.
+
+TASK 2.3: VERIFYING THE ALARM IS ACTIVATED
+
+Now that you have created a CloudWatch alarm to alert you when there are more than two authentication failures in a 5 minute time span, you can verify that it’s working correctly.
+
+In the CloudWatch navigation pane at the left of the page, under Alarm, choose All alarms.
+
+Choose the database server authentication failures alarm link to view the alarm details.
+
+Scroll down the page to the Details tab.
+
+ Consider: Is the alarm State currently In alarm, OK, or Insufficient data? What do you think has caused the current state of the alarm?
+
+When you configured the alarm, you set it to alert for two or more authentication failures in a five minute time span. If that situation occurs, the alarm state changes to In alarm. Because you chose to maintain the alarm state when there is missing data, the alarm will remain in the In alarm state until you manually change it.
+
+If the alarm state is OK or Insufficient data, return to the Jump Host console session and attempt to SSH to the database server again.
+Refer to Task 1.2 for the commands to connect to the database server, if necessary.
+
+When prompted for a password, purposefully enter an incorrect password three times. Remember, you want to generate authentication failures to verify the CloudWatch alarm is working as intended.
+
+Repeat the previous two steps two more times to generate a total of three failed login attempts.
+
+Return to your web browser tab with the database server authentication failures alarm and refresh the page.
+
+ Note: It can take approximately 2 minutes for the alarm state to change to In alarm.
+
+The alarm status should now be In alarm and you should receive an email notification regarding the state change.
+
+ Task complete: You have successfully created a CloudWatch alarm and notification to monitor authentication failures on an EC2 instance.
+Task 3: Configuring VPC flow logs to send network traffic data to Amazon CloudWatch Logs
+
+In this task, you create a CloudWatch log group to store network traffic activity data. You then create a VPC flow log and configure it to send data to the CloudWatch log group. Finally, you generate SSH traffic and observe the results in the VPC flow logs.
+
+At this end of this task, you should be able to validate that the VPC flow logs from the Lab VPC VPC are in CloudWatch Logs.
+
+ Note: An IAM role has been pre-created as part of the lab environment build process for use when configuring the VPC flow logs. It is named VpcFlowLogsRole
+
+
+Important
+Your account does not have permissions to create IAM roles in this lab. To assist you with task that require a specific IAM role and permissions, a role has been pre-created for you during the lab environment build process.
+
+For this task, you can use the VpcFlowLogsRole role.
+Task 3 hints
+Use the following high-level process steps to get you started:
+
+Create a CloudWatch Logs log group.
+Create and configure VPC flow logs for the Lab VPC VPC.
+Generate SSH traffic from the Jump Host instance to the Database Server instance.
+Validate that the VPC flow logs were sent to CloudWatch.
+Reference material:
+
+Publish flow logs to CloudWatch Logs
+Task 3 full walkthrough
+TASK 3.1: CREATING A CLOUDWATCH LOG GROUP
+
+First, you must create the CloudWatch log group to send the VPC flow logs to.
+
+At the top of the AWS Management Console, in the search bar, search for and choose CloudWatch.
+
+In the CloudWatch navigation pane at the left of the page, under Logs, choose Log groups.
+
+At the upper-right of the Log groups page, choose Create log group.
+
+On the Create log group page, in the Log group details section:
+
+For Log group name, enter lab_vpc_flow_log.
+For Retention setting, choose 3 months (90 days).
+For Log class, choose Standard.
+ Note: For the purposes of this lab, you don’t need to retain the logs beyond the duration of the lab. However, in a production environment, select the retention time based on your organization’s policies or regulation requirements.
+
+Choose Create.
+TASK 3.2: CREATING A VPC FLOW LOG
+
+Now that you have created the CloudWatch log group, you can create and configure a VPC flow log to record traffic flow within the VPC.
+
+At the top of the AWS Management Console, in the search bar, search for and choose VPC.
+
+In the navigation pane at the left of the page, under Virtual private cloud, choose Your VPCs.
+
+On the Your VPCs page, select Lab VPC.
+
+In the Details pane at the bottom of the page, choose the Flow logs tab.
+
+At the right of the Flow logs section, choose Create flow log.
+
+On the Create flow log page, in the Flow log settings section:
+
+For Name, enter lab_vpc_flow_log.
+For Filter, select All.
+For Maximum aggregation interval, select 1 minute.
+For Destination, select Send to CloudWatch Logs.
+For Destination log group, choose lab_vpc_flow_log.
+For IAM role, choose VpcFlowLogsRole.
+For Log record format, select Custom format.
+On the Log format drop-down menu, select the following options in this order:
+account-id
+interface-id
+srcaddr
+srcport
+dstaddr
+dstport
+protocol
+subnet-id
+flow-direction
+action
+ Expected result: The Format preview box should look like this:
+
+
+${account-id} ${interface-id} ${srcaddr} ${srcport} ${dstaddr} ${dstport} ${protocol} ${subnet-id} ${flow-direction} ${action}
+
+Learn more
+You select 1 minute for the Maximum aggregation level in this lab to shorten the time before you can see the resulting logs.
+
+For more information, refer to Aggregation interval in the Additional resources section at the end of this lab.
+Choose Create flow log.
+ File contents: The VpcFlowLogsRole IAM role that you selected while configuring the flow logs contains the following policy:
+
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
+    }
+  ]
+}
+The policy allows the VPC Flow Logs service to create CloudWatch log groups and log streams, and write events to the log streams.
+
+
+Learn more
+For more information about VPC Flow Logs, refer to Logging IP traffic with VPC Flow Logs and Publish flow logs to CloudWatch Logs in the Additional resources section at the end of this lab.
+TASK 3.3: GENERATING SSH TRAFFIC TO THE DATABASE SERVER
+
+Next, fail to connect to the database server again to generate SSH traffic for the VPC flow log and authentication failures on the Database Server instance.
+
+Return to your web browser tab with the console connection to the Jump Host instance.
+
+ To establish an SSH connection to the Database Server instance as the student user, run the following command:
+
+Replace the DB_SERVER_IP placeholder value with the DbServerIp value listed to the left of these instructions.
+
+ssh student@DB_SERVER_IP
+When prompted for a password, purposefully enter an incorrect password three times. Remember, you are trying to generate authentication failures, so failed logins are what you want.
+
+Repeat the previous two steps two more times to generate a total of three failed login attempts.
+
+Return to your web browser tab with the VPC management console.
+
+At the top of the AWS Management Console, in the search bar, search for and choose CloudWatch.
+
+In the navigation pane at the left of the page, in the Logs section, choose Log groups.
+
+On the Log groups page, select the link for lab_vpc_flow_log.
+
+On the lab_vpc_flow_log details page, in the Log streams section, choose Search all log streams.
+
+ Note: The Search all log streams option allows you to search through all of the log streams that are in the log group, rather than searching through them individually.
+
+Review several of the log entries to determine what types of traffic were allowed and which were rejected. Use the right arrow  to expand each item to view the full message.
+If you followed the log format listed in task 3.1, the log messages should appear similar to this:
+
+Account number	Interface ID	Source IP address	Source port	Destination IP address	Destination port	Protocol	Subnet ID	Traffic direction	Action
+111122223333	eni-033f9ffcae97410fc	35.203.211.182	50105	10.10.1.203	10595	6	subnet-0bdb21c679e19baf0	ingress	REJECT
+111122223333	eni-033f9ffcae97410fc	52.94.177.19	443	10.10.1.203	31396	6	subnet-011bf7d0baa10594e	ingress	ACCEPT
+111122223333	eni-033f9ffcae97410fc	10.10.1.203	40698	52.94.210.188	443	6	subnet-011bf7d0baa10594e	egress	ACCEPT
+111122223333	eni-08e0a4f8b888cd128	10.10.1.250	33692	10.10.10.46	22	6	subnet-0fc774c1bf5b84ded	ingress	ACCEPT
+111122223333	eni-08e0a4f8b888cd128	10.10.10.46	22	10.10.1.250	33692	6	subnet-0fc774c1bf5b84ded	egress	ACCEPT
+ Consider: What types of traffic do you notice? In the preceding sample log data, there are a few items to call attention to:
+
+The 10.10.1.x IP range represents the lab public subnet, which is where the Jump Host instance resides.
+The 10.10.10.x IP range represents the lab private subnet, which is where the Database Server instance resides.
+The traffic on port 443 and a random port number between a public IP address and the 10.10.1.x IP range is generated by your Session Manager connection to the Jump Host instance.
+The traffic on port 22 and a random port number between the 10.10.1.x and 10.10.10.x IP ranges is generated by the SSH connection from the Jump Host instance to the Database Server instance.
+ Security: If you examine the source address, destination address, and destination port for many of the rejected connected attempts, you might notice that several different IP addresses are attempting to connect to the Jump Host instance via SSH (port 22). Because the security group that is attached to the Jump Host instance does not allow ingress traffic on port 22, the connection is rejected. This discovery highlights the importance of properly securing your instances, especially those that are accessible from the public internet.
+
+ Task complete: You have successfully created VPC Flow Logs to monitor the network traffic within your VPC.
+Task 4: Sending log messages from CloudWatch Logs to Kinesis Data Streams
+
+In this task, you create Kinesis data streams to ingest the security and VPC flow log data from CloudWatch Logs that you created in the previous tasks. You then create CloudWatch subscription filters to send log data to the respective data streams.
+
+
+Important
+Your account does not have permissions to create IAM roles in this lab. To assist you with task that require a specific IAM role and permissions, a role has been pre-created for you during the lab environment build process.
+
+For this task, you can use the PutKinesisDataStreamsRole role.
+ Note: If you would like to use the same resource names as the guided walkthrough steps, use the following:
+
+Kinesis data streams names:
+security_log_stream
+vpc_flow_log_stream
+Task 4 hints
+Task 4 full walkthrough
+TASK 4.1: CREATING KINESIS DATA STREAMS FOR THE CLOUDWATCH LOGS SUBSCRIPTION FILTERS
+
+First, you create two Kinesis data streams—one to ingest the security log data and one to ingest the VPC flow logs data.
+
+Creating the data stream for the database server security logs
+
+At the top of the AWS Management Console, in the search bar, search for and choose Kinesis.
+
+On the Amazon Kinesis services page, in the Get started section, choose Kinesis Data Streams.
+
+Choose Create data stream.
+
+On the Create data stream page, in the Data stream configuration section:
+
+For Data stream name, enter security_log_stream.
+In the Data stream capacity section:
+For Capacity mode, choose Provisioned.
+For Provisioned shards, keep the default value of 1.
+At the bottom of the page, choose Create data stream.
+
+On the security_log_stream page, in the Data stream summary section, wait for the Status to change to Active, which takes approximately 20 seconds.
+
+Creating the data stream for the VPC flow log
+
+Repeat the previous steps to create a new Kinesis data stream with the same settings named vpc_flow_log_stream.
+TASK 4.2: SENDING LOGS TO THE KINESIS DATA STREAMS
+
+Next, configure the CloudWatch Logs log groups to send data to the Kinesis data streams.
+
+Create a subscription filter for the security logs
+
+At the top of the AWS Management Console, in the search bar, search for and choose CloudWatch.
+
+In the navigation pane at the left of the page, under Logs, choose Log groups.
+
+Choose the database_server_security_logs link.
+
+On the database_server_security_logs page, choose the Subscription filters tab.
+
+In the Subscriptions filters section, choose Create , Create Kinesis subscription filter.
+
+On the Create Kinesis subscription filter page, in the Choose destination section:
+
+For Destination account, choose Current account.
+For Kinesis data stream, choose security_log_stream.
+In the Grant permission section:
+For Select an existing role, choose PutKinesisDataStreamsRole.
+In the Distribution method section, choose By log stream.
+
+In the Configure log format and filters section:
+
+For Log format, choose JSON.
+For Subscription filter pattern, enter "ssh" (including the quotes).
+For Subscription filter name, enter database server ssh connection logs.
+In the Test pattern section:
+For Select log data to test, choose the instance ID of the database server instance (it should be the only one listed).
+Choose Test pattern.
+
+In the results section, verify the event messages that are displayed contain the ssh string.
+
+ Expected result: You should find various events related to SSH connections. Some are related to the connection itself, while others are related to SSH authentication attempts, similar to the following table:
+
+Event number	Event message
+6	Jul 31 14:14:12 ip-10-10-10-213 sshd[2629]: Received disconnect from 10.10.1.161 port 50694:11: disconnected by user
+7	Jul 31 14:14:12 ip-10-10-10-213 sshd[2629]: Disconnected from 10.10.1.161 port 50694
+8	Jul 31 14:14:12 ip-10-10-10-213 sshd[2627]: pam_unix(sshd:session): session closed for user student
+9	Jul 31 14:14:16 ip-10-10-10-213 sshd[2848]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=ip-10-10-1-161.ec2.internal user=student
+10	Jul 31 14:14:18 ip-10-10-10-213 sshd[2848]: Failed password for student from 10.10.1.161 port 33668 ssh2
+11	Jul 31 14:14:22 ip-10-10-10-213 sshd[2848]: Failed password for student from 10.10.1.161 port 33668 ssh2
+12	Jul 31 14:14:25 ip-10-10-10-213 sshd[2848]: Failed password for student from 10.10.1.161 port 33668 ssh2
+13	Jul 31 14:14:25 ip-10-10-10-213 sshd[2848]: Connection closed by 10.10.1.161 port 33668 [preauth]
+14	Jul 31 14:14:25 ip-10-10-10-213 sshd[2848]: PAM 2 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=ip-10-10-1-161.ec2.internal user=student
+At the bottom of the page, choose Start streaming.
+Creating a subscription filter for the VPC flow logs
+
+In the navigation pane at the left of the page, under Logs, choose Log groups.
+
+Choose the lab_vpc_flow_log link.
+
+On the lab_vpc_flow_log page, choose the Subscription filters tab.
+
+In the Subscriptions filters section, choose Create , Create Kinesis subscription filter.
+
+On the Create Kinesis subscription filter page, in the Choose destination section:
+
+For Destination account, choose Current account.
+For Kinesis data stream, choose vpc_flow_log_stream.
+In the Grant permission section:
+For Select an existing role, choose PutKinesisDataStreamsRole.
+In the Distribution method, choose By log stream.
+
+In the Configure log format and filters section:
+
+For Log format, choose Amazon VPC Flow logs.
+For Subscription filter pattern, enter [account_id, interface_id, srcaddr != "-", srcport != "-", dstaddr != "-", dstport = "22", protocol, subnet_id, flow_direction, action].
+For Subscription filter name, enter lab vpc flow logs - SSH connections.
+In the Test pattern section:
+For Select log data to test, choose one of the entries that starts with eni-.
+Choose Test pattern.
+ Note: If the test displays no results, choose another eni- entry and try again.
+
+ Expected result: You should find various events related to network traffic with traffic destined for port 22, similar to the following table:
+
+Event number	$account_id	$action	$dstaddr	$dstport	$flow_direction	$interface_id	$protocol	$srcaddr	$srcport	$subnet_id
+30	688556073576	ACCEPT	10.10.10.212	22	ingress	eni-049e54bab2365f536	6	10.10.1.47	41046	subnet-00571f4d0e3ae9d6d
+33	688556073576	ACCEPT	10.10.10.212	22	ingress	eni-049e54bab2365f536	6	10.10.1.47	50676	subnet-00571f4d0e3ae9d6d
+35	688556073576	ACCEPT	10.10.10.212	22	ingress	eni-049e54bab2365f536	6	10.10.1.47	60072	subnet-00571f4d0e3ae9d6d
+41	688556073576	ACCEPT	10.10.10.212	22	ingress	eni-049e54bab2365f536	6	10.10.1.47	55510	subnet-00571f4d0e3ae9d6d
+At the bottom of the page, choose Start streaming.
+TASK 4.3: VERIFYING DATA IN THE KINESIS DATA STREAMS
+
+Now that you have configured CloudWatch Logs to send the security and VPC flow logs to Kinesis data streams, verify that the data is being sent correctly.
+
+Verify data in the security log data stream
+
+First, you verify that the security log data is delivered to the data stream.
+
+At the top of the AWS Management Console, in the search bar, search for and choose Kinesis.
+
+In the navigation pane, choose Data streams.
+
+On the Data streams page, choose the security_log_stream link to view its details.
+
+On the security_log_stream page, choose the Data viewer tab.
+
+On the Data viewer tab, do the following:
+
+For Shard, choose the only shard listed.
+For Starting position, choose Trim horizon.
+Choose Get records.
+ Expected result: You should find at least one record that looks similar to the following result:
+
+Partition key	Data	Approximate arrival timestamp	Sequence number
+3e21f5e8240c…	��5�Ak�@�ῲ�Yz…	February 16, 2024 at 14:08:07 EDT	49643503449553087228…
+
+Learn more
+The Data field is displayed as random characters, with some symbols, because logs that are sent to a receiving service through a subscription filter are base64 encoded and compressed with the gzip format.
+
+For more information, including an example of using the AWS command line interface (CLI) to decompress and decode the data sent to the data stream, refer to Log group-level subscription filters in the Additional resources section at the end of this lab.
+Verify data in the VPC flow log data stream
+
+Next, you verify that the VPC flow log data is delivered to the data stream.
+
+In the navigation pane, choose Data streams.
+
+On the Data streams page, choose the vpc_flow_log_stream link to view its details.
+
+On the vpc_flow_log_stream page, choose the Data viewer tab.
+
+On the Data viewer tab, do the following:
+
+For Shard, choose the only shard in the list.
+For Starting position, choose Trim horizon.
+Choose Get records.
+ Note: If you receive a message stating No record found for this requst, change the Shard value and try again.
+
+ Expected result: You should find at least one record that looks similar to the following result:
+
+Partition key	Data	Approximate arrival timestamp	Sequence number
+33074c62b24…	��u�͊�0�_Eܵc�cI�v…	August 11, 2023 at 14:16:22 EDT	49643503587973812675…
+ Task complete: You have successfully created CloudWatch Logs subscription filters to send log data to Kinesis data streams and verified that that the logs are being delivered
+Task 5: Processing the CloudWatch Logs data
+
+As you discoverd in the previous task, when CloudWatch Logs sends data to other AWS services through a subscription filter, it is automatically gzip compressed and base64 encoded. Before you can analyze the data, you must decompress and decode it.
+
+In this task, you create two Kinesis data streams to store the processed log data. You then create a Python-based AWS Lambda function to decode, decompress, and send the log data to the log streams.
+
+
+Important
+Your account does not have permissions to create IAM roles in this lab. To assist you with task that require a specific IAM role and permissions, a role has been pre-created for you during the lab environment build process.
+
+For this task, you can use the LambdaCWLogsProcessorRole role.
+ File contents: To assist with building a Python-based function that extracts the keys and values, the following sections provide an example of what the JSON-formatted security and VPC flow log messages looks like. Expand each section to view them.
+
+Sample JSON-formatted security log
+Sample JSON-formatted VPC flow log
+ Note: If you would like to use the same resource names as the guided walkthrough steps, use the following:
+
+Kinesis data streams names:
+processed_security_logs
+processed_vpc_flow_logs
+Task 5 hints
+Task 5 full walkthrough
+TASK 5.1: CREATING KINESIS DATA STREAMS FOR THE PROCESSED LOG DATA
+
+First, you create two Kinesis data streams—one to ingest the security log data and one to ingest the VPC flow logs data.
+
+Creating the data stream for the processed database server security logs
+
+At the top of the AWS Management Console, in the search bar, search for and choose Kinesis.
+
+On the Amazon Kinesis services page, in the navigation pane, choose Data streams.
+
+Choose Create data stream.
+
+On the Create data stream page, in the Data stream configuration section:
+
+For Data stream name, enter processed_security_logs.
+In the Data stream capacity section:
+For Capacity mode, choose Provisioned.
+For Provisioned shards, keep the default value of 1.
+At the bottom of the page, choose Create data stream.
+
+On the security_log_stream page, in the Data stream summary section, wait for the Status to change to Active, which takes approximately 20 seconds.
+
+Creating the data stream for the processed VPC flow log
+
+Repeat the previous steps to create a new Kinesis data stream with the same settings named processed_vpc_flow_logs.
+TASK 5.2: CREATING LAMBDA FUNCTIONS TO PROCESS THE CLOUDWATCH LOGS DATA
+
+Now that you have data streams to store the processed log data, you create Lambda functions to process and extract the log data that you want to analyze.
+
+Creating the Lambda function to process the security logs
+
+First, you create a Lambda function to extract the data from the security logs from CloudWatch. Remember, when using a CloudWatch subscription filter to send logs to another AWS service, the logs are encoded and compressed. You must decode and decompress them before you can analyze the data. At that point, the data is JSON-formatted.
+
+ File contents: To assist with building a Python-based function that extracts the keys and values, the following is an example of what the JSON-formatted security log message looks like:
+
+
+{
+  "messageType": "DATA_MESSAGE",
+  "owner": "111122223333",
+  "logGroup": "database_server_security_logs",
+  "logStream": "i-036c6f43b38e6b61a",
+  "subscriptionFilters": [
+    "database server ssh connection logs"
+  ],
+  "logEvents": [
+    {
+      "id": "38104563441211684163447985274019668812185257472852623360",
+      "timestamp": 1708667719486,
+      "message": "Feb 23 05:55:16 ip-10-10-10-31 sshd[281729]: Failed password for student from 10.10.1.125 port 43864 ssh2"
+    },
+    {
+      "id": "38104563518327661059966880097450182599003291560532901890",
+      "timestamp": 1708667722944,
+      "message": "Feb 23 05:55:20 ip-10-10-10-31 sshd[281729]: Failed password for student from 10.10.1.125 port 43864 ssh2"
+    }
+  ]
+}
+ Note: Notice there are multiple log events in the keys and values that are nested in the logEvents key.
+
+At the top of the AWS Management Console, in the search bar, search for and choose Lambda.
+
+On the Functions page, choose Create function.
+
+On the Create function page, in the Basic information section, configure the following:
+
+For Function name, enter SecurityLogsProcessor.
+For Runtime, choose Python 3.12.
+For Architecture, choose x86_64.
+For Permissions, expand the Change default execution role section.
+For Execution role, choose Use an existing role.
+For Existing role, choose LambdaCWLogsProcessorRole.
+Choose Create function.
+
+On the SecurityLogsProcessorFunction page, on the Code tab, in the Code source section, replace the existing code in the lambda_function.py file with the following code:
+
+
+import json
+import base64
+import boto3
+import os
+import gzip
+
+kinesis_client = boto3.client('kinesis')
+KINESIS_DATA_STREAM = os.environ['KinesisDataStream']
+
+def lambda_handler(event, context):
+  ### Get CloudWatch Logs records and decode them
+  for record in event["Records"]:
+    # Set partition key
+    pk = str("PartitionKey1")
+    # Print partition key to logs for verification and troubleshooting
+    print("Partition key: " + str(pk))
+    # Decode the log files data from CloudWatch Logs
+    payload = base64.b64decode(record["kinesis"]["data"])
+    # Print the decoded data to logs for verification and troubleshooting
+    print("Decoded payload: " + str(payload))
+    # CloudWatch Logs data is delivered in a compressed format and must be decompressed
+    message = gzip.decompress(payload)
+    # Print decompressed data to logs for verification and troubleshooting
+    print("Uncompressed message: " + str(message))
+
+  ### Extract JSON data
+  # Load data from CloudWatch logs into memory
+  event_data = json.loads(message)
+  # Print to logs for verification and troubleshooting
+  print("eventData JSON string: " + str(event_data))
+
+  # Extract all top-level and nested keys, then recombine into a single string
+  index1 = 0
+  top_level_keys = ''
+  # Loop to extract the top-level keys
+  for key, value in event_data.items():
+    index1 += 1
+    if key != 'logEvents':
+      if index1 < (len(event_data.keys())):
+        top_level_keys += f'"{key}": "{value}", '
+      else:
+        top_level_keys += f'"{key}": "{value}"'
+    if key == 'logEvents':
+      # Loop to extract the nested keys in the logEvents
+      for events in value:
+        index2 = 0
+        logEvents_keys = ''
+        for logEvents_key, logEvents_value in events.items():
+          index2 += 1
+          if index2 < (len(events.keys())):
+            logEvents_keys += f'"{logEvents_key}": "{logEvents_value}", '
+          else:
+            logEvents_keys += f'"{logEvents_key}": "{logEvents_value}"'
+        # Print strings derived from each level of keys and values to validate the for loops are working correctly
+        print(f'Top level keys: {top_level_keys}\n')
+        print(f'Keys in logEvents: {logEvents_keys}\n')
+        # Recombine the extracted top-level and nested keys to create a single string of keys and values
+        recombined_message = f'{{{top_level_keys}{logEvents_keys}}}'
+        # Convert the combined message string to a dict type
+        convert_message_to_dict = json.loads(recombined_message)
+        # Print the combined message data to logs for verification and troubleshooting
+        print(f'Recombined message: {convert_message_to_dict}')
+        # Encode the combined message data into a byte format required for the Kinesis data stream
+        encoded_message = json.dumps(convert_message_to_dict, indent=2).encode('utf-8')
+        # Print the encoded message data to logs for verification and troubleshooting
+        print("Encoded message: " + str(encoded_message))
+        # Send encoded extracted data to a Kinesis data stream
+        response = kinesis_client.put_record(Data=encoded_message, PartitionKey=pk, StreamName=KINESIS_DATA_STREAM)
+        # Print the response from Kinesis to logs for verification and troubleshooting
+        print(response)
+The preceding code contains several comments to help you understand what each statement is used for. Overall, it performs the following actions:
+
+Gets the CloudWatch logs records from the Kinesis data stream that is defined as a trigger for the function.
+Decodes and then decompresses the records. Remember that CloudWatch Logs automatically GZip compresses and base- des the records that it sends to other AWS services.
+Extracts the keys and values that are nested inside of the logEvents key. There can be multiple log messages- of each record, so extracting each one out allows for easier querying of the messages.
+Re-encodes the extracted keys and values so they can be sent to a Kinesis data stream.
+Sends the encoded data to a new Kinesis data stream that you specify in the Lambda function’s environment variables.
+Choose Deploy.
+Next, you add the destination Kinesis data stream to the Lambda function’s environment variables.
+
+Choose the Configuration tab.
+
+Choose Environment variables.
+
+In the Environment variables section, choose Edit.
+
+On the Edit environment variables page, choose Add environment variable.
+
+Configure the following:
+
+For Key, enter KinesisDataStream.
+For Value, enter processed_security_logs.
+Choose Save.
+
+In the properties list, choose Triggers.
+
+Choose Add trigger.
+
+On the Add trigger page, on the drop-down menu, under Real-time/streaming data, choose Kinesis.
+
+Additional fields are displayed.
+
+In the Trigger configuration section, configure the following:
+For Kinesis stream, choose security_log_stream.
+Select Activate trigger, if it is not selected already.
+for Starting position, choose Trim horizon.
+Choose Add.
+Creating the Lambda function to process the VPC flow logs
+
+Next, you create a similar Lambda function to extract the data from the VPC flow logs from CloudWatch.
+
+ File contents: To assist with building a Python-based function that extracts the keys and values, the following is an example of what the JSON-formatted security log message looks like:
+
+
+{
+  "messageType": "DATA_MESSAGE",
+  "owner": "661281361048",
+  "logGroup": "lab_vpc_flow_log",
+  "logStream": "eni-02c4e47ec82526ec2-all",
+  "subscriptionFilters": [
+    "lab vpc flow logs - SSH connections"
+  ],
+  "logEvents": [
+    {
+      "id": "38105684377330926138734372550081605093555442009135841281",
+      "timestamp": 1708717984000,
+      "message": "661281361048 eni-02c4e47ec82526ec2 140.99.221.253 51047 10.10.1.251 22 6 subnet-09fcf991c574420f7 ingress ACCEPT",
+      "extractedFields": {
+        "srcaddr": "140.99.221.253",
+        "protocol": "6",
+        "account_id": "661281361048",
+        "interface_id": "eni-02c4e47ec82526ec2",
+        "dstport": "22",
+        "flow_direction": "ingress",
+        "srcport": "51047",
+        "subnet_id": "subnet-09fcf991c574420f7",
+        "action": "ACCEPT",
+        "dstaddr": "10.10.1.251"
+      }
+    }
+  ]
+}
+ Note: Notice that the VPC flow logs contain an additional set of keys compared to the security logs, which are nested in the extractedFields key, and need to accounted for in your Python code.
+
+At the top of the AWS Management Console, in the search bar, search for and choose Lambda.
+
+On the Functions page, choose Create function.
+
+On the Create function page, in the Basic information section, configure the following:
+
+For Function name, enter VpcFlowLogsProcessor.
+For Runtime, choose Python 3.12.
+For Architecture, choose x86_64.
+For Permissions, expand the Change default execution role section.
+For Execution role, choose Use an existing role.
+For Existing role, choose LambdaCWLogsProcessorRole.
+Choose Create function.
+
+On the SecurityLogsProcessorFunction page, on the Code tab, in the Code source section, replace the existing code in the lambda_function.py file with the following code:
+
+
+import json
+import base64
+import boto3
+import os
+import gzip
+
+kinesis_client = boto3.client('kinesis')
+KINESIS_DATA_STREAM = os.environ['KinesisDataStream']
+
+def lambda_handler(event, context):
+  ### Get CloudWatch Logs records and decode them
+  for record in event["Records"]:
+    # Set partition key
+    pk = str("PartitionKey1")
+    # Print partition key to logs for verification and troubleshooting
+    print("Partition key: " + str(pk))
+    # Decode the log files data from CloudWatch Logs
+    payload = base64.b64decode(record["kinesis"]["data"])
+    # Print the decoded data to logs for verification and troubleshooting
+    print("Decoded payload: " + str(payload))
+    # CloudWatch Logs data is delivered in a compressed format and must be decompressed
+    message = gzip.decompress(payload)
+    # Print decompressed data to logs for verification and troubleshooting
+    print("Uncompressed message: " + str(message))
+
+  ### Extract JSON data
+  # Load data from CloudWatch logs into memory
+  event_data = json.loads(message)
+  # Print to logs for verification and troubleshooting
+  print("eventData JSON string: " + str(event_data))
+
+  # Extract all top-level and nested keys, then recombine into a single string
+  index1 = 0
+  top_level_keys = ''
+  # Loop to extract the top-level keys
+  for key, value in event_data.items():
+    index1 += 1
+    if key != 'logEvents':
+      if index1 < (len(event_data.keys())):
+        top_level_keys += f'"{key}": "{value}", '
+      else:
+        top_level_keys += f'"{key}": "{value}"'
+    if key == 'logEvents':
+      # Loop to extract the nested keys in the logEvents key
+      for events in value:
+        index2 = 0
+        logEvents_keys = ''
+        extractedFields_keys = ''
+        for logEvents_key, logEvents_value in events.items():
+          index2 += 1
+          index3 = 0
+          if logEvents_key != 'extractedFields':
+            if index2 < (len(events.keys())):
+              logEvents_keys += f'"{logEvents_key}": "{logEvents_value}", '
+            else:
+              logEvents_keys += f'"{logEvents_key}": "{logEvents_value}"'
+          elif logEvents_key == 'extractedFields':
+            # Loop to extract the nested keys in the extractedFields key
+            for extractedFields_key, extractedFields_value in logEvents_value.items():
+              index3 += 1
+              if index3 < (len(logEvents_value.keys())):
+                extractedFields_keys += f'"{extractedFields_key}": "{extractedFields_value}", '
+              else:
+                extractedFields_keys += f'"{extractedFields_key}": "{extractedFields_value}"'
+        # Print strings derived from each level of keys and values to validate the for loops are working correctly
+        print(f'Top level keys: {top_level_keys}\n')
+        print(f'Keys in logEvents: {logEvents_keys}\n')
+        print(f'Keys in extractedFields: {logEvents_keys}\n')
+        # Recombine the extracted top-level and nested keys to create a single string of keys and values
+        recombined_message = f'{{{top_level_keys}{logEvents_keys}{extractedFields_keys}}}'
+        # Convert the combined message string to a dict type
+        convert_message_to_dict = json.loads(recombined_message)
+        # Print the combined message data to logs for verification and troubleshooting
+        print(f'Recombined message: {convert_message_to_dict}')
+        # Encode the combined message data into a byte format required for the Kinesis data stream
+        encoded_message = json.dumps(convert_message_to_dict, indent=2).encode('utf-8')
+        # Print the encoded message data to logs for verification and troubleshooting
+        print("Encoded message: " + str(encoded_message))
+        # Send encoded extracted data to a Kinesis data stream
+        response = kinesis_client.put_record(Data=encoded_message, PartitionKey=pk, StreamName=KINESIS_DATA_STREAM)
+        # Print the response from Kinesis to logs for verification and troubleshooting
+        print(response)
+The preceding code contains several comments to help you understand what each statement is used for. Overall, it performs the following actions:
+
+Gets the CloudWatch logs records from the Kinesis data stream that is defined as a trigger for the function.
+Decodes and then decompresses the records. Remember that CloudWatch Logs automatically GZip compresses and base- des the records that it sends to other AWS services.
+Extracts the keys and values that are nested inside of the logEvents and extractedFields keys. There can be- e log messages inside of each record, so extracting each one out allows for easier querying of the messages.
+Re-encodes the extracted keys and values so they can be sent to a Kinesis data stream.
+Sends the encoded data to a new Kinesis data stream that you specify in the Lambda function’s environment variables.
+Choose Deploy.
+Next, you add the destination Kinesis data stream to the Lambda function’s environment variables.
+
+Choose the Configuration tab.
+
+Choose Environment variables.
+
+In the Environment variables section, choose Edit.
+
+On the Edit environment variables page, choose Add environment variable.
+
+Configure the following:
+
+For Key, enter KinesisDataStream.
+For Value, enter processed_vpc_flow_logs.
+Choose Save.
+
+In the properties list, choose Triggers.
+
+Choose Add trigger.
+
+On the Add trigger page, on the drop-down menu, under Real-time/streaming data, choose Kinesis.
+
+Additional fields are displayed.
+
+In the Trigger configuration section, configure the following:
+For Kinesis stream, choose vpc_flow_log_stream.
+Select Activate trigger, if it is not selected already.
+for Starting position, choose Trim horizon.
+Choose Add.
+TASK 5.3: VERIFY THE LAMBDA FUNCTION IS PROCESSING DATA FROM CLOUDWATCH LOGS
+
+Now that you have configured the Lambda function to process the data from CloudWatch Logs, you can validate that it is working as intended.
+
+Generating logs to process
+
+Now that you have the Lambda functions and Kinesis data streams configured, you can generate new logs to test the workflow.
+
+Return to your web browser tab with the connection to the Jump Host instance.
+
+ To generate SSH connection and authentication failure logs, run the following command:
+
+Replace the DB_SERVER_IP placeholder value with the DbServerIp value listed to the left of these instructions.
+When prompted for a password, purposefully enter an incorrect password three times to generate one failed login attempt.
+
+ssh student@DB_SERVER_IP
+Reviewing the logs that the security logs processor function generates
+
+Return to your web browser tab with the Lambda console.
+
+To return to the list of functions, in the navigation pane, choose Functions.
+
+ Note: You might need to choose the  menu icon to open the navigation pane.
+
+On the Functions page, choose the link for the SecurityLogsProcessor function.
+
+On the SecurityLogsProcessor page, choose the Monitor tab.
+
+Choose View CloudWatch logs .
+
+A new web browser tab opens to the CloudWatch log group that contains the logs for the Lambda function.
+
+On the Log streams tab, choose the link for the most recent log stream.
+You should find log entries that include the output of the print statements from the Lambda function, as well as other function-related messages, similar to the following:
+
+Timestamp	Message
+2024-02-23T00:55:20.516-05:00	START RequestId: 1eefd5dd-98ac-4643-a2ba-63924c6e05e9 Version: $LATEST
+2024-02-23T00:55:20.516-05:00	Partition key: PartitionKey1
+2024-02-23T00:55:20.516-05:00	Decoded payload: b’\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff=\x90[k…
+2024-02-23T00:55:20.516-05:00	Uncompressed message: b’{“messageType”:“DATA_MESSAGE”,“owner”:"1111…
+2024-02-23T00:55:20.517-05:00	eventData JSON string: {‘messageType’: ‘DATA_MESSAGE’, ‘owner’: '11…
+2024-02-23T00:55:20.517-05:00	Top level keys: “messageType”: “DATA_MESSAGE”, “owner”: "1111222233…
+2024-02-23T00:55:20.517-05:00	Keys in logEvents: “id”: "38104563378591191645973995486520174836727…
+2024-02-23T00:55:20.517-05:00	Recombined message: {‘messageType’: ‘DATA_MESSAGE’, ‘owner’: '11112…
+2024-02-23T00:55:20.517-05:00	Encoded message: b’{\n “messageType”: “DATA_MESSAGE”,\n “owner”: "1…
+2024-02-23T00:55:21.120-05:00	{‘ShardId’: ‘shardId-000000000000’, ‘SequenceNumber’: '496495283437…
+2024-02-23T00:55:21.133-05:00	END RequestId: 1eefd5dd-98ac-4643-a2ba-63924c6e05e9
+The message that starts with ShardId contains the details of the function response, which has information about the Kinesis data stream that the processed log data was sent to. The shard ID and sequence number can be useful if you wish to search the data stream for a particular message.
+
+Make a note of the SequenceNumber from one of the ShardId messages. You use it in a future step to locate the data in the Kinesis data stream.
+Verifying data is in the processed security logs Kinesis data stream
+
+Next, you validate that the data was loaded into the Kinesis data stream successfully.
+
+At the top of the AWS Management Console, in the search bar, search for and choose Kinesis.
+
+In the navigation pane, choose Data streams.
+
+Choose the link for the processed_security_logs data stream.
+
+On the processed_security_logs page, choose the Data viewer tab.
+
+To view records in the data stream, do the following:
+
+For Shard, choose shardId-000000000000, which should be the only shard listed.
+For Starting position, choose Trim horizon.
+Choose Get records.
+ Expected output: You should receive one or more entries that contain the processed log data, as well as information about each particular record, similar to the following:
+
+Partition key	Data	Approximate arrival timestamp	Sequence number
+PartitionKey1	{ “messageType”: "DATA…	February 23, 2024 at 00:40:21 EST	496495283437154…
+PartitionKey1	{ “messageType”: "DATA…	February 23, 2024 at 00:40:25 EST	496495283437154…
+PartitionKey1	{ “messageType”: "DATA…	February 23, 2024 at 00:40:25 EST	496495283437154…
+ Note: If the output is No record found for this request, you can use the following settings to search for a specific sequence number:
+
+For Shard, choose shardId-000000000000, which should be the only shard listed.
+For Starting position, choose At sequence number.
+For Sequence number, enter the SequenceNumber value that you noted from the function logs you reviewed previously.
+Choose Get records.
+
+Learn more
+By default, a Kinesis data stream only retains records for 24 hours. However, you can use the AWS Management Console or the AWS CLI to configure a data stream to retain the records for up to 365 days.
+
+For more information, refer to Kinesis Data Streams - Changing the Data Retention Period in the Additional resources section at the end of this lab.
+Reviewing the logs that the VPC flow logs processor function generates
+
+Return to your web browser tab with the Lambda console.
+
+To return to the list of functions, in the navigation pane, choose Functions.
+
+ Note: You might need to choose the  menu icon to open the navigation pane.
+
+On the Functions page, choose the link for the VpcFlowLogsProcessor function.
+
+On the VpcFlowLogsProcessor page, choose the Monitor tab.
+
+Choose View CloudWatch logs .
+
+A new web browser tab opens to the CloudWatch log group that contains the logs for the Lambda function.
+
+On the Log streams tab, choose the link for the most recent log stream.
+You should find log entries that include the output of the print statements from the Lambda function, as well as other function-related messages, similar to the following:
+
+Timestamp	Message
+2024-02-23T15:33:17.663-05:00	START RequestId: 0eabe890-9ca6-48f3-8f65-af4a65ab7e30 Version: $LATEST
+2024-02-23T15:33:17.665-05:00	Partition key: PartitionKey1
+2024-02-23T15:33:17.665-05:00	Decoded payload: b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xffuQK\x8b…
+2024-02-23T15:33:17.665-05:00	Uncompressed message: b’{“messageType”:“DATA_MESSAGE”,“owner”:"1111…
+2024-02-23T15:33:17.665-05:00	eventData JSON string: {‘messageType’: ‘DATA_MESSAGE’, ‘owner’: '11…
+2024-02-23T15:33:17.665-05:00	Top level keys: “messageType”: “DATA_MESSAGE”, “owner”: "1111222233…
+2024-02-23T15:33:17.665-05:00	Keys in logEvents: “id”: "38105735780548608751820716636314412204440…
+2024-02-23T15:33:17.665-05:00	Keys in extractedFields: “id”: "38105735780548608751820716636314412…
+2024-02-23T15:33:17.665-05:00	Recombined message: {‘messageType’: ‘DATA_MESSAGE’, ‘owner’: '11112…
+2024-02-23T15:33:17.666-05:00	Encoded message: b’{\n “messageType”: “DATA_MESSAGE”,\n “owner”: "1…
+2024-02-23T15:33:18.224-05:00	{‘ShardId’: ‘shardId-000000000000’, ‘SequenceNumber’: '496495374434…
+2024-02-23T15:33:18.244-05:00	END RequestId: 0eabe890-9ca6-48f3-8f65-af4a65ab7e30
+The message that starts with ShardId contains the details of the function response, which has information about the Kinesis data stream that the processed log data was sent to. The shard ID and sequence number can be useful if you wish to search the data stream for a particular message.
+
+Make a note of the SequenceNumber from one of the ShardId messages. You use it in a future step to locate the data in the Kinesis data stream.
+Verifying data is in the processed VPC logs Kinesis data stream
+
+Next, you validate that the data was loaded into the Kinesis data stream successfully.
+
+At the top of the AWS Management Console, in the search bar, search for and choose Kinesis.
+
+In the navigation pane, choose Data streams.
+
+Choose the link for the processed_vpc_flow_logs data stream.
+
+On the processed_vpc_flow_logs page, choose the Data viewer tab.
+
+To view records in the data stream, do the following:
+
+For Shard, choose shardId-000000000000, which should be the only shard listed.
+For Starting position, choose Trim horizon.
+Choose Get records.
+ Expected output: You should receive one or more entries that contain the processed log data, as well as information about each particular record, similar to the following:
+
+Partition key	Data	Approximate arrival timestamp	Sequence number
+PartitionKey1	{ “messageType”: "DATA…	February 23, 2024 at 00:40:21 EST	496495283437154…
+PartitionKey1	{ “messageType”: "DATA…	February 23, 2024 at 00:40:25 EST	496495283437154…
+PartitionKey1	{ “messageType”: "DATA…	February 23, 2024 at 00:40:25 EST	496495283437154…
+ Note: If the output is No record found for this request, you can use the following settings to search for a specific sequence number:
+
+For Shard, choose shardId-000000000000, which should be the only shard listed.
+For Starting position, choose At sequence number.
+For Sequence number, enter the SequenceNumber value that you noted from the function logs you reviewed previously.
+Choose Get records.
+ Task complete: You have successfully used a Lambda function to process the CloudWatch log data, sent the processed data to a Kinesis data stream, and verified that the data arrived successfully.
+Task 6: Analyzing the log data with Amazon Managed Service for Apache Flink
+
+Now that you have processed the log data, you can use an Amazon Managed Service for Apache Flink notebook to analyze the log data.
+
+
+Important
+Your account does not have permissions to create IAM roles in this lab. To assist you with task that require a specific IAM role and permissions, a role has been pre-created for you during the lab environment build process.
+
+For this task, you can use the KinesisNotebookRole role.
+Task 6 hints
+Use the following high-level process steps to get you started:
+
+Create an Amazon Managed Service for Apache Flink notebook.
+Create an AWS Glue database during the notebook creation wizard.
+Use Flink SQL queries to create Glue tables that access the Kinesis data streams
+Use Flink SQL queries to get data from the Kinesis data streams
+Reference material:
+
+Amazon Managed Service for Apache Flink - Creating a Studio notebook
+Flink SQL - CREATE Statements
+Specifically the Metadata Columns section
+Flink SQL - Data Types
+Flink SQL - System (Built-in) Functions
+Task 6 full walkthrough
+TASK 6.1: CREATING AN AMAZON MANAGED SERVICE FOR APACHE FLINK NOTEBOOK
+
+First, you create the Amazon Managed Service for Apache Flink notebook.
+
+In the navigation pane, choose Managed Apache Flink .
+A new web browser tab opens to the Amazon Managed Service for Apache Flink start page.
+
+In the Get started section, choose Studio notebooks.
+
+Choose Create Studio notebook.
+
+On the Create Studio notebook page, in the Choose a method to setup the Studio notebook section, do the following:
+
+For Creation method, choose Create with custom settings.
+In the General section:
+For Studio notebook name, enter ssh_failures.
+For Runtime, choose Apache Flink 1.15, Apache Zeppelin 0.10.
+Choose Next.
+
+On the IAM permissions page, in the IAM role section, do the following:
+
+For Access to application resources, choose Choose from IAM roles that Managed Service for Apache Flink can assume.
+For Service role, choose KinesisNotebookRole.
+In the AWS Glue database section, next to AWS Glue database, choose Create .
+The AWS Glue Databases page opens in a new web browser tab.
+
+On the Databases page, choose Add database.
+
+On the Create a database page, in the Database details section:
+
+For Name, enter ssh_failures_notebook_db
+For Description, enter Data related to the ssh_failures Managed Apache Flink notebook.
+Choose Create database.
+
+Close your web browser tab with the AWS Glue Databases page and return to your tab with the notebook IAM permissions page.
+
+To refresh the list of databases, next to AWS Glue database, choose  refresh.
+
+For AWS Glue database, choose ssh_failures_notebook_db.
+
+Choose Next.
+
+On the Configurations page, keep the default settings, and choose Next.
+
+At the bottom of the Review and create page, choose Create Studio notebook.
+
+At the upper-right of the ssh_failures page, choose Run.
+
+In the Run Studio notebook ssh_failures? pop-up window, choose Run.
+
+In the Studio notebook details section, wait for Status to change to Running.
+
+At the upper-right of the page, choose Open in Apache Zeppelin .
+
+The Welcome to Zeppelin! page opens in a new web browser tab.
+
+ Note: If the Apache Zeppelin page does not open, verify that it is not being blocked by a pop-up blocker.
+
+On the Welcome to Zeppelin! page, under Notebook, choose Create new note.
+
+In the Create New Note pop-up window, do the following:
+
+For Note Name, enter ssh log analysis.
+For Default Interpreter, choose flink.
+Choose Create.
+TASK 6.2: QUERYING DATA IN THE KINESIS DATA STREAMS
+
+Now that you have a notebook to utilize, you can use SQL queries to create tables in the Glue database and analyze the log data that you processed previously.
+
+Creating a table to store data from the processed security logs
+
+To create a table to store the fields from the processed security logs, in the first notebook section, copy and paste the following SQL query:
+Replace the AWS_REGION placeholder value with the AwsRegionCode value that is listed to the left of these instructions.
+
+%flink.ssql
+
+DROP TABLE IF EXISTS security_logs;
+CREATE TABLE security_logs (
+  `messageType` STRING,
+  `owner` STRING,
+  `logGroup` STRING,
+  `logStream` STRING,
+  `subscriptionFilters` STRING,
+  `id` STRING,
+  `dateTime` TIMESTAMP_LTZ(3) METADATA FROM 'timestamp',
+  `message` STRING
+  )
+WITH (
+  'connector' = 'kinesis',
+  'stream' = 'processed_security_logs',
+  'aws.region' = 'AWS_REGION',
+  'scan.stream.initpos' = 'TRIM_HORIZON',
+  'format' = 'json'
+);
+ Note: The TIMESTAMP_LTZ(3) METADATA FROM 'timestamp' data type in the create table statement is used to convert the timestamp field from the log data, which is in Unix epoch format, to a more readable date time format.
+
+To run the query, choose the Run this paragraph button, or press Shift + Enter.
+ Expected output: The output should indicate that the table has been created, similar to this:
+
+
+Table has been dropped.
+Table has been created.
+Querying the processed security logs
+
+To query the security_logs table that you just created for all values, in the next notebook section, copy and paste the following SQL query:
+
+%flink.ssql
+
+SELECT * FROM security_logs;
+ Expected output: The output should display a table with data for each field you specified in the query to create the table, similar to the following:
+
+messageType	owner	logGroup	logStream	subscription filters	id	dateTime	message
+DATA_MESSAGE	111122223333	database_server_security_logs	i-036c6f43b38e6b61a	[‘database server ssh connection logs’]	38104543307028483160471942090629566062458787300275322881	2024-02-26 03:04:27.744	Feb 23 05:40:13 ip-10-10-10-31 sshd[281336]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=10.10.1.125 user=student
+ Note: The query can take approximately 1–2 minutes to load data. While the data is loading, you might notice that the column headers, such as messageType and owner, display well before the data does.
+
+ Consider: What types of queries might you find useful when analyzing the security logs?
+
+Expand the following sections below for example queries that you might find useful:
+
+ Note: % can be used as a wildcard
+
+Get messages that contain failed password entries or authentication failures
+
+%flink.ssql
+
+SELECT `dateTime`, message
+FROM security_logs
+WHERE message LIKE '%failed password%' OR message LIKE '%authentication failure%';
+Get messages between specific dates and times
+ Note: Replace the dates and times in the query to align with logs that you have generated during this lab. The date and time is formatted as YYYY-MM-DD HH:MM:SS.
+
+
+%flink.ssql
+
+SELECT dateTime, message
+FROM security_logs
+WHERE dateTime BETWEEN '2024-02-26 01:00:00' AND '2024-02-26 09:00:00';
+Creating a table to store data from the processed VPC flow logs
+
+To create a table to store the fields from the processed security logs, in the next notebook section, copy and paste the following SQL query:
+Replace the AWS_REGION placeholder value with the AwsRegionCode value that is listed to the left of these instructions.
+
+%flink.ssql
+
+DROP TABLE IF EXISTS vpc_flow_logs;
+CREATE TABLE vpc_flow_logs (
+  `messageType` STRING,
+  `owner` STRING,
+  `logGroup` STRING,
+  `logStream` STRING,
+  `subscriptionFilters` STRING,
+  `id` STRING,
+  `dateTime` TIMESTAMP_LTZ(3) METADATA FROM 'timestamp',
+  `message` STRING,
+  `action` STRING,
+  `srcaddr` STRING,
+  `srcport` INTEGER,
+  `dstaddr` STRING,
+  `dstport` INTEGER,
+  `interface_id` STRING,
+  `subnet_id` STRING,
+  `protocol` INTEGER,
+  `flow_direction` STRING,
+  `account_id` STRING
+  )
+WITH (
+  'connector' = 'kinesis',
+  'stream' = 'processed_vpc_flow_logs',
+  'aws.region' = 'AWS_REGION',
+  'scan.stream.initpos' = 'TRIM_HORIZON',
+  'format' = 'json'
+);
+To run the query, choose the Run this paragraph button, or press Shift + Enter.
+ Expected output: The output should indicate that the table has been created, similar to this:
+
+
+Table has been dropped.
+Table has been created.
+Querying the processed VPC flow logs
+
+To query the vpc_flow_logs table that you just created for all values, in the next notebook section, copy and paste the following SQL query:
+
+%flink.ssql
+
+SELECT * FROM vpc_flow_logs;
+ Expected output: The output should display a table with data for each field you specified in the query to create the table, similar to the following:
+
+messageType	owner	logGroup	logStream	subscription filters	id	datetime	message	action	srcaddr	srcport	dstaddr	dstport	interface_id	subnet_id	protocol	flow_direction	account_id
+DATA_MESSAGE	111122223333	lab_vpc_flow_log	eni-055972e57b83309df-all	[‘lab vpc flow logs - SSH connections’]	38110115669206345364736574738855334470589481756025094146	2024-02-26 03:05:26.885	661281361048 eni-055972e57b83309df 10.10.1.125 41218 10.10.10.31 22 6 subnet-03c7a7e9239eac71d ingress ACCEPT	ACCEPT	10.10.1.125	41218	10.10.10.31	22	eni-055972e57b83309df	subnet-03c7a7e9239eac71d	6	ingress	111122223333
+ Consider: What types of queries might you find useful when analyzing the security logs?
+
+Expand the following sections below for example queries that you might find useful:
+
+ Note: % can be used as a wildcard
+
+Get connections to the database instance
+Replace the DB_INSTANCE_IP placeholder value with the DbServerIp value that is listed to the left of these instructions.
+
+%flink.ssql
+
+SELECT * FROM vpc_flow_logs
+WHERE dstaddr LIKE 'DB_INSTANCE_IP';
+Get messages between specific dates and times
+ Note: Replace the dates and times in the query to align with logs that you have generated during this lab. The date and time is formatted as YYYY-MM-DD HH:MM:SS.
+
+
+%flink.ssql
+
+SELECT dateTime, message
+FROM security_logs
+WHERE dateTime BETWEEN '2024-02-26 01:00:00' AND '2024-02-26 09:00:00';
+Get all connection attempts that were rejected
+ Security: If you examine the source address, destination address, and destination port for many of the rejected connected attempts, you might notice that several different IP addresses are attempting to connect to the Jump Host instance via SSH (port 22). Because the security group that is attached to the Jump Host instance does not allow ingress traffic on port 22, the connection is rejected. This discovery highlights the importance of properly securing your instances, especially those that are accessible from the public internet.
+
+
+%flink.ssql
+
+SELECT * FROM vpc_flow_logs
+WHERE action = 'REJECT';
+ Task complete: You have successfully used an Amazon Managed Service for Apache Flink notebook and SQL queries to analyze data from the security and VPC flow logs.
+Conclusion
+
+You have successfully done the following:
+
+Installed the Amazon CloudWatch Logs agent on a Linux-based EC2 instance.
+Sent system authentication logs to Amazon CloudWatch Logs.
+Configured an Amazon CloudWatch alarm to send notifications after authentication failures.
+Created VPC flow logs to capture network traffic.
+Created Kinesis data streams to store logs from CloudWatch Logs.
+Created a Lambda function to process CloudWatch log data in a Kinesis data stream.
+Analyzed logs with Amazon Managed Service for Apache Flink using SQL queries.
