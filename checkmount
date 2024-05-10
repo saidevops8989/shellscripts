@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+DATAfolder_DIR="/storage_datafolder"
+
+DATAfolder_V6="<%= @datafolder_prefix %>::$(echo "${HOSTNAME}" | sed 's/.*vreyes\([0-9]*\).*/\1/')"
+
+# do we think data is mounted?
+if grep "${DATAfolder_DIR}" /proc/mounts &>/dev/null; then
+    # yes. is datafolder actually there?
+    if ! /bin/timeout 30 touch "${DATAfolder_DIR}"/.liveness-check &>/dev/null; then
+        # datafolder is gone, do we have files still open on it?
+        DATAfolder_OFILES="$(/bin/readlink /proc/*/fd/* | grep "${DATAfolder_DIR}")"
+        if [[ "${DATAfolder_OFILES}" != "" ]]; then
+            # there were open files on datafolder, log what they were in journal
+            echo "WARNING: Following files were open when datafolder disappeared:";
+            echo "${DATAfolder_OFILES}";
+        fi;
+        # unmount datafolder
+        /bin/umount -lf "${DATAfolder_DIR}"
+    fi;
+else
+    # no. is datafolder there?
+    if ping -c4 "${DATAfolder_V6}" &>/dev/null; then
+        # datafolder is there, try to mount it
+        mount -t nfs "[${DATAfolder_V6}]:/storage_unencrypted" "/storage_datafolder";
+    fi;
+fi;
