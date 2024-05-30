@@ -1,3 +1,5 @@
+#cat /usr/local/bin/datacart.sh
+_____
 #!/usr/bin/env bash
 
 DATAfolder_DIR="/storage_datafolder"
@@ -25,3 +27,24 @@ else
         mount -t nfs "[${DATAfolder_V6}]:/storage_unencrypted" "/storage_datafolder";
     fi;
 fi;
+############
+
+defin a service 
+cat /etc/systemd/system/datacart.service
+# This file is managed by chef.
+# Local changes to this file will be overwritten.
+
+[Unit]
+Description=Manage datacart mount
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/datacart.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+#######
+
+systemctl status datacart
+#######
