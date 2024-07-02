@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+ENC_KEY="$(pull_secrets_tool get_from_group server_DISK_KEY KEYOFCLEVIS)";
+
+mkdir ssh;
+rolecertreq --force --secure-thrift-id --use-dir ssh;
+chmod 600 ssh/id_rsa;
+
+CARTSET_A1="denverA101-server1001.server.com denverA101-server1002.server.com denverA101-server1003.server.com denverA101-server1004.server.com denverA101-server1005.server.com denverA101-server1006.server.com denverA101-server1007.server.com denverA101-server1008.server.com"
+CARTSET_A2="denverA101-server2001.server.com denverA101-server2002.server.com denverA101-server2003.server.com denverA101-server2004.server.com denverA101-server2005.server.com denverA101-server2006.server.com denverA101-server2007.server.com denverA101-server2008.server.com"
+CARTSET_B1="denverB101-server1001.server.com denverB101-server1002.server.com denverB101-server1003.server.com denverB101-server1004.server.com denverB101-server1005.server.com denverB101-server1006.server.com denverB101-server1007.server.com denverB101-server1008.server.com"
+CARTSET_B2="denverB101-server2001.server.com denverB101-server2002.server.com denverB101-server2003.server.com denverB101-server2004.server.com denverB101-server2005.server.com denverB101-server2006.server.com denverB101-server2007.server.com denverB101-server2008.server.com"
+
+TARGETS="${CARTSET_A2}"
+
+for dc_host in $(echo ${TARGETS}); do
+  ssh -i ssh/id_rsa root@${dc_host} 'if [[ -e /dev/data_vg/unencrypted ]]; then umount /storage_unencrypted; lvremove -y /dev/data_vg/unencrypted; fi; lvcreate -y -i $(vgs -o pv_count --noheadings) -l 100%FREE -n encrypted data_vg';
+  echo "${ENC_KEY}" | ssh -i ssh/id_rsa root@${dc_host} 'cryptsetup luksFormat /dev/mapper/data_vg-encrypted'
+  echo "${ENC_KEY}" | ssh -i ssh/id_rsa root@${dc_host} 'cryptsetup open /dev/mapper/data_vg-encrypted encrypted'
+  ssh -i ssh/id_rsa root@${dc_host} 'mkfs.xfs /dev/mapper/encrypted; mkdir /encrypted; mount /dev/mapper/encrypted /encrypted'
+done;
