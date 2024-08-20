@@ -1,0 +1,64 @@
+# /etc/systemd/system/encrypt-disk.service
+[Unit]
+Description=disk encryption service on server server
+After=network.target syslog.target local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/encryption/encrypt_disk.sh
+RemainAfterExit=true
+ExecStop=/opt/encryption/decrypt_disk.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+[root@server]# cat /opt/encryption/encrypt_disk.sh
+#!/bin/bash
+
+DEVICE="/dev/mapper/data_vg-encrypted"
+MOUNTPOINT="/storage"
+CRYPT_VOL_NAME="cryptostore"
+
+# Generate emphemeral key
+passphrase=$(< /dev/urandom tr -dc '_A-Za-z0-9@#%^_\\-\\=+' | head -c 256 | xargs -0 echo)
+
+# For debugging
+# keyfile=/var/encryption_key
+# echo $passphrase > $keyfile
+
+encrypted_volume=/dev/mapper/"${CRYPT_VOL_NAME}"
+
+# Check if the volume is already mounted
+is_mounted=$(mount | grep "${encrypted_volume}" || echo "not mounted")
+echo "$is_mounted"
+if [[ "${is_mounted}" != "not mounted" ]]
+then
+    # unmount it. it is supposed to be mounted on the mount point. if not, need human to look at.
+    umount "${MOUNTPOINT}"
+    cryptsetup -v luksClose "${CRYPT_VOL_NAME}"
+
+    is_mounted=$(mount | grep "${encrypted_volume}" || echo "not mounted")
+    if [[ "${is_mounted}" != "not mounted" ]]
+    then
+        echo "Error: Cannot unmount the encrypted volume."
+        exit 1
+    fi
+fi
+
+# Use the new key to encrypt the volume
+echo "$passphrase" | cryptsetup -v luksFormat "${DEVICE}" || exit 1
+echo "$passphrase" | cryptsetup open --type luks "${DEVICE}" "${CRYPT_VOL_NAME}" --perf-submit_from_crypt_cpus || exit 1
+unset passphrase
+
+# Create filesystem and mount it
+mkfs.xfs -f "${encrypted_volume}"
+mount -t xfs "${encrypted_volume}" "${MOUNTPOINT}"
+
+# Check if the volume is mounted correctly
+df -h "${MOUNTPOINT}"
+mount | grep "/dev/mapper/${CRYPT_VOL_NAME}" | awk -v mount_point="${MOUNTPOINT}" '{if ($3 == mount_point) { print "Successfully mounted!"; exit 0 }} ENDFILE{exit 1}'
+
+# Create necessary folders
+mkdir -p "${MOUNTPOINT}/data"
+chown -R server: "${MOUNTPOINT}"
+chmod u+w "${MOUNTPOINT}/data"
