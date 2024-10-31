@@ -1,0 +1,24 @@
+stress test an nvidia box, I have a few notes on it that may be worth noting somewhere. I had to do some digging and figuring out, but this is what I came up with. Some test the entire system and some commands are specific to the gpus as noted in the command. 
+
+NVIDIA GPU Stress test:
+sudo nvsm stress-test gpu --force --no-prompt
+sudo nvsm stress-test --force --no-prompt
+dcgmi diag -r diagnostic,pcie -p diagnostic.test_duration=1200
+nvsm stress-test all 3600 —-force —-log-level debug --no-prompt
+
+# List the GPU group
+dcgmi group -l
+# run GPU test for 30 minutes on group 0 (from command above)
+dcgmi diag -g 0 -r 3
+# run GPU test on group 0 (from command above) 1-2 hours**
+dcgmi diag -g 0 -r 4
+
+Notes on dcgmi:
+-g <group id> (found by 'dcgmi group -l)
+	This will typically be group 0
+-r <diag>
+Where 'diag' is:
+1 - Quick (System Validation ~ seconds)
+2 - Medium (Extended System Validation ~ 2 minutes)
+3 - Long (System HW Diagnostics ~ 15 minutes)
+4 - Extended (Longer-running System HW Diagnostics)
