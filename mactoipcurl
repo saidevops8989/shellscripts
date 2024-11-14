@@ -1,0 +1,64 @@
+cat idracip
+2620:10d:c0a3:200:c5cb:e9f8:abcd:d834
+
+#!/bin/bash
+for x in $(cat oobip)
+do
+	echo "$x"
+  curl -u username:passwd -sk https://[${x}]/redfish/v1/Systems/System.Embedded.1/NetworkAdapters/NIC.Slot.2/NetworkPorts/NIC.Slot.2-1 | jq -r .AssociatedNetworkAddresses[0]
+done
+##ouptut##
+2620:10d:c0a3:200:c5cb:e9f8:abcd:d834
+8B:51:C1:AB:2A:66
+
+
+
+cat hf/xah-eth0
+server1.example.com 6H:24:NM:GC:2B:58
+server2.example.com 6T:24:NM:GC:2B:58
+server3.example.com 6G:24:NM:GC:2B:58
+
+
+
+cat bin/mac-ipv6
+#!/bin/bash
+
+macaddr=$1
+if [[ $# -eq 0 ]]; then
+  echo "Usage: $(basename $0) <mac_address> [ <hostname> ]"
+  echo "  Where: <hostname> is optional."
+  echo "  Example:"
+  echo "  $(basename $0) z8:x4:97:79:9b:96 server.example.com"
+  exit
+elif [[ $# -eq 2 ]]; then
+  netseg=`host $2 | grep IPv6 | awk '{print $5}' |  awk -F: '{print $1 ":" $2 ":" $3 ":" $4 ":" }'`
+else
+  netseg=""
+fi
+
+format_eui_64() {
+  #local macaddr="$1"
+  hostip=`printf "%02x%s" $(( 16#${macaddr:0:2} ^ 2#00000010 )) "${macaddr:2}" \
+    | sed -E -e 's/([0-9a-zA-Z]{2})*/0x\0|/g' \
+    | tr -d ':\n' \
+    | xargs -d '|' \
+    printf "%02x%02x:%02xff:fe%02x:%02x%02x"`
+    printf "$netseg$hostip"
+}
+
+format_eui_64 $1
+echo
+
+
+
+#!/bin/bash
+cat hf/xah-eth0 | while read hname ethomac
+ do echo "$hname"
+ ethoip=$(mac-ipv6 $ethomac server99.example.com)
+ echo "$ethoip"
+ serf set name="$hname" --create-nics  eth0.ipv6_addr="$ethoip" -m "updating eth0 mac and ethoip"
+ #serf set name="$hname"  --create-nics eth0.mac="$ethomac" -m "updating eth0 mac and ethoip"
+done
+
+
+
