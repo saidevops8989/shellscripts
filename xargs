@@ -1,0 +1,5 @@
+#echo sai| xargs -I {} sed -e :a -e 'N;s/\n//g;ta'{}
+asai
+
+#echo sai| xargs -I {} echo {}
+sai
